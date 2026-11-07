@@ -9,6 +9,7 @@ import qualified Data.ByteString.Char8 as C8
 import Data.Bits (xor)
 import Data.List (foldl')
 import Numeric (showHex)
+import qualified WOTSMinusTests
 
 assert :: String -> Bool -> IO ()
 assert label ok = unless ok (ioError (userError label))
@@ -85,4 +86,5 @@ main = do
   forM_ [BS.empty, C8.pack "hello WOTS", BS.replicate 1024 255] $ \msg -> do
     (secret, public) <- W.generateKeyPair
     assert "generated key signs and verifies" (W.verify public msg (W.signOnce secret msg))
-  putStrLn "All WOTS and SHA-256 tests passed."
+  WOTSMinusTests.tests
+  putStrLn "All WOTS, WOTS-, and SHA-256 tests passed."

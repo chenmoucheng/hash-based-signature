@@ -31,6 +31,10 @@ Keep changes small enough for a human to review and explain material design choi
   in the implementation plan. Document the exact construction; WOTS+ requires an
   explicit scope decision. Test base conversion, checksum encoding, and chain
   bounds independently, and derive sizes from the selected parameters.
+- Keep the requested checksum-free WOTS- toy in `Crypto.HashBased.WOTSMinus`
+  with distinct types. Preserve its educational insecure status, SHA-256 message
+  preprocessing, and tests demonstrating digest-level forgery without checksums.
+  Do not present chosen-digest attacks as message-preimage attacks.
 - Use established cryptographic randomness for key generation. Keep deterministic
   fixtures in tests; never add a production fallback to predictable randomness.
 - Hide constructors when necessary to preserve length or parameter invariants.

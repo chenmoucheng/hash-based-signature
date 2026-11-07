@@ -20,6 +20,7 @@ stack.yaml
 hash-based-signature.cabal
 src/Crypto/HashBased/Hash.hs
 src/Crypto/HashBased/WOTS.hs
+src/Crypto/HashBased/WOTSMinus.hs
 test/Main.hs
 .github/workflows/ci.yml
 README.md
@@ -87,6 +88,13 @@ Implemented and validated locally on Apple Silicon: the library, example,
 independent fixtures, and tests pass with `stack build --test --system-ghc`.
 Linux CI is configured but has not yet been run remotely. Adding a second scheme
 remains a separately scoped task.
+
+The subsequently requested WOTS- toy variant is implemented separately in
+`Crypto.HashBased.WOTSMinus`. It removes all checksum chains, leaving 64 chains
+and a 2048-byte signature payload, while retaining the same message prehash and
+chain rules. It has distinct opaque types, reuses private WOTS digit/chain helpers,
+and adds independent fixture checks plus a digest-level forgery demonstration.
+It is intentionally insecure and does not expand scope to production variants.
 
 1. **Bootstrap the project.** Choose and pin a compatible Stack snapshot, native
    hash wrapper, randomness dependency, and small test dependency. Add the library,

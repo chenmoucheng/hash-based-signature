@@ -82,6 +82,32 @@ WOTS+, WOTS-PRF, or an XMSS/LMS-compatible implementation.
 This choice deliberately retains the basic plain-hash construction. Security
 claims for PRF-based WOTS or WOTS+ are not claims about this implementation.
 
+## WOTS- toy variant
+
+`Crypto.HashBased.WOTSMinus` implements **WOTS-**, the requested toy obtained by
+removing every checksum chain from the WOTS construction above. It keeps SHA-256
+message preprocessing, high-nibble-first base-16 digits, and 15-step hash chains.
+There are exactly 64 chains; signature and public-key payloads are each 2048 bytes.
+This is a local educational variant, not a standardized signature scheme.
+
+Use `import qualified Crypto.HashBased.WOTSMinus as Minus`. It exposes the same
+function names as WOTS (`generateKeyPair`, `publicKey`, `signOnce`, `verify`) and
+separate opaque key/signature types, so the two variants cannot be mixed. Its
+private implementation reuses WOTS's digit conversion and chain advancement.
+
+WOTS- is deliberately insecure. Without a checksum, a signature for a digest can
+be advanced to sign any digest whose digits are all greater than or equal to the
+original digits. Tests demonstrate this with chosen digests `11…11` and `22…22`,
+advancing each signature element once without the secret key. This is a
+digest-level demonstration; it does not claim to find SHA-256 message preimages
+for those chosen digests. The public API still hashes messages before signing.
+One-time key use remains required and unenforced. Use WOTS- only for experiments.
+
+The test suite also checks WOTS- against the first 64 chains of the independently
+generated Python fixture, tests all signature components for tampering, rejects
+malformed internal fixture lengths, and exercises fresh-key signing of empty and
+nonempty messages. Existing CI runs these tests with the rest of the suite.
+
 ## Dependencies
 
 | Package | Version | Role / native requirements | License |

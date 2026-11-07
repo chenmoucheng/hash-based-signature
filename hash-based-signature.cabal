@@ -17,8 +17,8 @@ common defaults
 library
   import: defaults
   hs-source-dirs: src
-  exposed-modules: Crypto.HashBased.Hash, Crypto.HashBased.WOTS
-  other-modules: Crypto.HashBased.WOTS.Internal
+  exposed-modules: Crypto.HashBased.Hash, Crypto.HashBased.WOTS, Crypto.HashBased.WOTSMinus
+  other-modules: Crypto.HashBased.WOTS.Internal, Crypto.HashBased.WOTSMinus.Internal
 
 test-suite tests
   import: defaults
@@ -26,9 +26,12 @@ test-suite tests
   hs-source-dirs: test, src
   main-is: Main.hs
   other-modules:
+      WOTSMinusTests
       Crypto.HashBased.Hash
       Crypto.HashBased.WOTS
       Crypto.HashBased.WOTS.Internal
+      Crypto.HashBased.WOTSMinus
+      Crypto.HashBased.WOTSMinus.Internal
 
 executable wots-example
   default-language: Haskell2010
