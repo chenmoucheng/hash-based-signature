@@ -11,6 +11,10 @@ build tools. The pinned `lts-22.44` snapshot selects GHC 9.6.7 and dependency
 versions; `stack.yaml.lock` records the snapshot content hash. Stack can install
 GHC, or use an existing matching compiler with `--system-ghc`.
 
+Use the same compiler selection for both build and execution. When building with
+`stack build --test --system-ghc`, run `stack exec --system-ghc wots-example` too.
+CI uses this pair so both steps share the same compiler and installation paths.
+
 On Ubuntu 24.04:
 
 ```sh
