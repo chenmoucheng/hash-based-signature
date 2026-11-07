@@ -1,0 +1,38 @@
+cabal-version: 2.4
+name: hash-based-signature
+version: 0.1.0.0
+synopsis: Minimal experimental hash-based signature library
+build-type: Simple
+extra-source-files: README.md, test/fixtures/wots.txt, test/generate-fixture.py
+
+common defaults
+  default-language: Haskell2010
+  ghc-options: -Wall -Wcompat
+  build-depends:
+      base >=4.18 && <4.19
+    , bytestring >=0.11 && <0.12
+    , cryptohash-sha256 ==0.11.102.1
+    , entropy ==0.4.1.11
+
+library
+  import: defaults
+  hs-source-dirs: src
+  exposed-modules: Crypto.HashBased.Hash, Crypto.HashBased.WOTS
+  other-modules: Crypto.HashBased.WOTS.Internal
+
+test-suite tests
+  import: defaults
+  type: exitcode-stdio-1.0
+  hs-source-dirs: test, src
+  main-is: Main.hs
+  other-modules:
+      Crypto.HashBased.Hash
+      Crypto.HashBased.WOTS
+      Crypto.HashBased.WOTS.Internal
+
+executable wots-example
+  default-language: Haskell2010
+  ghc-options: -Wall
+  hs-source-dirs: examples
+  main-is: Main.hs
+  build-depends: base >=4.18 && <4.19, bytestring >=0.11 && <0.12, hash-based-signature

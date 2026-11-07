@@ -1,0 +1,18 @@
+name: CI
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native build prerequisites
+        run: sudo apt-get update && sudo apt-get install -y build-essential libgmp-dev zlib1g-dev
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: '9.6.7'
+          enable-stack: true
+          stack-version: '3.3.1'
+      - run: stack build --test --system-ghc
+      - run: stack exec wots-example
