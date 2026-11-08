@@ -5,7 +5,8 @@ import Crypto.HashBased.WOTS
 
 main :: IO ()
 main = do
-  (secret, public) <- generateKeyPair
+  bytes <- generateEntropy
+  (secret, public) <- maybe (fail "Invalid entropy length") pure (keyPairFromEntropy bytes)
   let message = BS.pack "hello WOTS"
       signature = signOnce secret message -- Never use secret again.
   print (verify public message signature)

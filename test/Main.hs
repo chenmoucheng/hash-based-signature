@@ -64,6 +64,17 @@ main = do
     assert "chain invalid bounds" (chain start steps seed == Nothing)
   let fixtureBytes = BS.pack (take signatureSize (cycle [0..255]))
   sk <- require "fixture key" (secretKeyFromBytes fixtureBytes)
+  (pureSecret, purePublic) <- require "public pure key generation" (W.keyPairFromEntropy fixtureBytes)
+  assert "pure generation matches independent fixture key" (W.publicKey sk == purePublic &&
+    W.signOnce sk (C8.pack "abc") == W.signOnce pureSecret (C8.pack "abc"))
+  forM_ [0, W.entropySize - 1, W.entropySize + 1] $ \n ->
+    assert "public entropy length rejection" (case W.keyPairFromEntropy (BS.replicate n 0) of
+      Nothing -> True
+      _ -> False)
+  entropy <- W.generateEntropy
+  assert "public entropy size" (BS.length entropy == W.entropySize && W.entropySize == 2144)
+  (entropySecret, entropyPublic) <- require "two-phase generation" (W.keyPairFromEntropy entropy)
+  assert "two-phase signing" (W.verify entropyPublic BS.empty (W.signOnce entropySecret BS.empty))
   let pk@(PublicKey publicParts) = W.publicKey sk
       message = C8.pack "abc"
       sig@(Signature signatureParts) = W.signOnce sk message

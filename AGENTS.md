@@ -37,6 +37,10 @@ Keep changes small enough for a human to review and explain material design choi
   Do not present chosen-digest attacks as message-preimage attacks.
 - Use established cryptographic randomness for key generation. Keep deterministic
   fixtures in tests; never add a production fallback to predictable randomness.
+- Preserve the public entropy-generation and pure key-generation phases in both
+  variants. Validate entropy length, document raw entropy as secret-key material,
+  and keep `generateKeyPair` as their composition. Caller-supplied bytes must be
+  fresh cryptographic randomness; size validation does not establish their quality.
 - Hide constructors when necessary to preserve length or parameter invariants.
   Validate untrusted byte inputs and return explicit failures for malformed values.
 - Do not log secret keys, derive printable representations for them, or claim

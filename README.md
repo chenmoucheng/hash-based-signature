@@ -37,15 +37,34 @@ import Crypto.HashBased.WOTS
 
 main :: IO ()
 main = do
-  (secret, public) <- generateKeyPair
+  bytes <- generateEntropy
+  (secret, public) <- maybe (fail "Invalid entropy length") pure (keyPairFromEntropy bytes)
   let message = BS.pack "hello WOTS"
       signature = signOnce secret message -- Never use secret again.
   print (verify public message signature)
 ```
 
-`generateKeyPair` obtains cryptographic entropy through `entropy`; failures
-propagate as IO exceptions. Secret-key constructors and deterministic key import
-are private. Public keys and signatures are opaque in-memory values; there is no
+Both variants expose two key-generation phases:
+
+```haskell
+generateEntropy    :: IO ByteString
+keyPairFromEntropy :: ByteString -> Maybe (SecretKey, PublicKey)
+entropySize        :: Int
+```
+
+`ByteString` here is the strict type from `Data.ByteString`. `generateEntropy`
+obtains cryptographic entropy through `entropy`; failures propagate as IO
+exceptions. `keyPairFromEntropy` is pure and deterministic: it accepts exactly
+`entropySize` bytes (2144 for WOTS, 2048 for WOTS-) and returns `Nothing` for other
+lengths. It splits these bytes directly into chain secrets; there is no seed
+expansion. Equal input bytes reproduce the same key pair. Callers providing their
+own entropy must ensure it is cryptographically random, secret, and fresh. Treat
+the bytes as secret-key material: do not log them or reuse them, even across the
+two variants. Deterministic public fixtures belong only in tests.
+
+`generateKeyPair :: IO (SecretKey, PublicKey)` remains as a convenience composing
+the two phases. Secret-key constructors remain private.
+Public keys and signatures are opaque in-memory values; there is no
 wire format or key persistence API.
 
 **A WOTS secret key must sign at most one message.** `signOnce` names the obligation
@@ -91,7 +110,7 @@ There are exactly 64 chains; signature and public-key payloads are each 2048 byt
 This is a local educational variant, not a standardized signature scheme.
 
 Use `import qualified Crypto.HashBased.WOTSMinus as Minus`. It exposes the same
-function names as WOTS (`generateKeyPair`, `publicKey`, `signOnce`, `verify`) and
+function names as WOTS (including both key-generation phases) and
 separate opaque key/signature types, so the two variants cannot be mixed. Its
 private implementation reuses WOTS's digit conversion and chain advancement.
 

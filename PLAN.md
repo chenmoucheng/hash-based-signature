@@ -65,6 +65,13 @@ Use an established cryptographic randomness dependency for key generation; never
 use a general-purpose PRNG. Keep deterministic test inputs separate from the
 production key generation path. Avoid printable secret-key representations.
 
+Both variants expose `generateEntropy :: IO ByteString` and pure
+`keyPairFromEntropy :: ByteString -> Maybe (SecretKey, PublicKey)`, with
+`entropySize` specifying the exact required length. Retain `generateKeyPair` as
+their convenience composition. Entropy bytes are secret-key material, not a short
+seed; callers must supply fresh cryptographic randomness. Invalid lengths return
+`Nothing`, and deterministic fixtures remain test-only.
+
 WOTS keys may sign only once. Use a conservative initial API: expose an
 explicitly named one-time signing function with this precondition documented at
 the call site and in the README. Haskell values are copyable, so the API does not

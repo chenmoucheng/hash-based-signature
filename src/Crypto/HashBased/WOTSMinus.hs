@@ -3,6 +3,7 @@
 -- Secret-key single use is an obligation, not enforced consumption.
 module Crypto.HashBased.WOTSMinus
   ( SecretKey, PublicKey, Signature
+  , generateEntropy, keyPairFromEntropy, entropySize
   , generateKeyPair, publicKey, signOnce, verify
   , winternitzBase, chainCount, signatureSize
   ) where

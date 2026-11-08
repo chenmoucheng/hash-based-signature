@@ -2,6 +2,7 @@
 -- Secret keys must be used at most once; this API cannot enforce consumption.
 module Crypto.HashBased.WOTS
   ( SecretKey, PublicKey, Signature
+  , generateEntropy, keyPairFromEntropy, entropySize
   , generateKeyPair, publicKey, signOnce, verify
   , winternitzBase, chainCount, signatureSize
   ) where

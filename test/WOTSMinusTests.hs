@@ -28,6 +28,17 @@ tests = do
       Nothing -> True
       _ -> False)
   sk <- require (I.secretKeyFromBytes (BS.pack (take 2048 (cycle [0..255]))))
+  (pureSecret, purePublic) <- require (M.keyPairFromEntropy (BS.pack (take 2048 (cycle [0..255]))))
+  assert "public pure generation matches fixture" (M.publicKey sk == purePublic &&
+    M.signOnce sk (C8.pack "abc") == M.signOnce pureSecret (C8.pack "abc"))
+  forM_ [0, M.entropySize - 1, M.entropySize + 1] $ \n ->
+    assert "public entropy length rejection" (case M.keyPairFromEntropy (BS.replicate n 0) of
+      Nothing -> True
+      _ -> False)
+  entropy <- M.generateEntropy
+  assert "public entropy size" (BS.length entropy == M.entropySize && M.entropySize == 2048)
+  (entropySecret, entropyPublic) <- require (M.keyPairFromEntropy entropy)
+  assert "two-phase signing" (M.verify entropyPublic BS.empty (M.signOnce entropySecret BS.empty))
   let pk@(I.PublicKey endpoints) = M.publicKey sk
       message = C8.pack "abc"
       sig@(I.Signature parts) = M.signOnce sk message

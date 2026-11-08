@@ -15,7 +15,7 @@ chainCount, signatureSize :: Int
 chainCount = messageDigits
 signatureSize = chainCount * digestSize
 
--- Test seam only; production keys always come from OS entropy.
+-- Internal decoder shared by pure key generation and test fixtures.
 secretKeyFromBytes :: BS.ByteString -> Maybe SecretKey
 secretKeyFromBytes bytes
   | BS.length bytes /= signatureSize = Nothing
@@ -26,12 +26,30 @@ secretKeyFromBytes bytes
       | otherwise = (:) <$> digestFromBytes (BS.take digestSize bs)
                          <*> chunks (BS.drop digestSize bs)
 
+-- | Required number of fresh, secret random bytes for one key pair.
+entropySize :: Int
+entropySize = chainCount * digestSize
+
+-- | Phase one: obtain secret entropy from the operating system.
+-- IO failures propagate; never reuse or log the returned bytes.
+generateEntropy :: IO BS.ByteString
+generateEntropy = getEntropy entropySize
+
+-- | Phase two: deterministically construct a key pair from exactly 'entropySize'
+-- bytes. Returns Nothing for invalid lengths. The caller must ensure the bytes
+-- are cryptographically random, secret, and fresh; length checking cannot do so.
+keyPairFromEntropy :: BS.ByteString -> Maybe (SecretKey, PublicKey)
+keyPairFromEntropy bytes = do
+  sk <- secretKeyFromBytes bytes
+  pure (sk, publicKey sk)
+
+-- | Convenience composition of entropy generation and pure key generation.
 generateKeyPair :: IO (SecretKey, PublicKey)
 generateKeyPair = do
-  bytes <- getEntropy signatureSize
-  case secretKeyFromBytes bytes of
+  bytes <- generateEntropy
+  case keyPairFromEntropy bytes of
     Nothing -> ioError (userError "WOTS-: entropy source returned an invalid length")
-    Just sk -> pure (sk, publicKey sk)
+    Just pair -> pure pair
 
 publicKey :: SecretKey -> PublicKey
 publicKey (SecretKey xs) = PublicKey (map (advance (winternitzBase - 1)) xs)
