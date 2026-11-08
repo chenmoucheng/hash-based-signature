@@ -82,9 +82,20 @@ main = do
   assert "independent complete public key and signature" (fixture ==
     [hex (BS.concat (map digestBytes publicParts)), hex (BS.concat (map digestBytes signatureParts))])
   assert "fixture verifies" (W.verify pk message sig)
+  assert "digest signing matches independent message fixture" (W.signDigest sk (hash message) == sig)
+  assert "digest verifies message signature" (W.verifyDigest pk (hash message) sig)
+  assert "changed digest rejected" (not (W.verifyDigest pk (hash (C8.pack "abd")) sig))
+  -- The caller-supplied digest is used directly, including the checksum.
+  let rawSig@(Signature rawParts) = W.signDigest sk zero
+      SecretKey secretParts = sk
+  assert "raw digest signing does not prehash" (take 64 rawParts == take 64 secretParts)
+  assert "raw digest verifies" (W.verifyDigest pk zero rawSig)
+  assert "raw digest is not hashed again" (not (W.verify pk (digestBytes zero) rawSig))
+  assert "raw digest checksum binds the signature" (not (W.verifyDigest pk ones rawSig))
   assert "changed message rejected" (not (W.verify pk (C8.pack "abd") sig))
   other <- require "other fixture key" (secretKeyFromBytes (BS.replicate signatureSize 42))
   assert "different public key rejected" (not (W.verify (W.publicKey other) message sig))
+  assert "digest wrong key rejected" (not (W.verifyDigest (W.publicKey other) (hash message) sig))
   -- Mutate every signature component, including all checksum chains.
   forM_ [0..chainCount-1] $ \position -> do
     let mutate d = digestFromBytes (BS.map (`xor` 1) (digestBytes d))

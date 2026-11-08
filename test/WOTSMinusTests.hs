@@ -46,9 +46,19 @@ tests = do
   fixture <- lines <$> readFile "test/fixtures/wots.txt"
   assert "independent checksum-free fixture" (map (take (2048*2)) fixture == [hex endpoints, hex parts])
   assert "signature verifies" (M.verify pk message sig)
+  assert "digest signing matches independent message fixture" (M.signDigest sk (hash message) == sig)
+  assert "digest verifies message signature" (M.verifyDigest pk (hash message) sig)
+  assert "changed digest rejected for this fixture" (not (M.verifyDigest pk (hash (C8.pack "abd")) sig))
+  zero <- require (digestFromBytes (BS.replicate 32 0))
+  let rawSig@(I.Signature rawParts) = M.signDigest sk zero
+      I.SecretKey secretParts = sk
+  assert "raw digest signing does not prehash" (rawParts == secretParts)
+  assert "raw digest verifies" (M.verifyDigest pk zero rawSig)
+  assert "raw digest is not hashed again" (not (M.verify pk (digestBytes zero) rawSig))
   assert "changed message rejected for this fixture" (not (M.verify pk (C8.pack "abd") sig))
   other <- require (I.secretKeyFromBytes (BS.replicate 2048 42))
   assert "wrong key rejected" (not (M.verify (M.publicKey other) message sig))
+  assert "digest wrong key rejected" (not (M.verifyDigest (M.publicKey other) (hash message) sig))
   forM_ [0..63] $ \position -> do
     damaged <- require (digestFromBytes (BS.map (`xor` 1) (digestBytes (parts !! position))))
     let changed = take position parts ++ [damaged] ++ drop (position+1) parts
@@ -59,11 +69,11 @@ tests = do
   -- No assertion is made that these chosen digests have known message preimages.
   low <- require (digestFromBytes (BS.replicate 32 0x11))
   high <- require (digestFromBytes (BS.replicate 32 0x22))
-  let I.Signature lowParts = I.signDigest sk low
+  let I.Signature lowParts = M.signDigest sk low
       forged = I.Signature (map (advance 1) lowParts)
-  assert "original digest verifies" (I.verifyDigest pk low (I.Signature lowParts))
-  assert "checksum-free digest forgery succeeds" (I.verifyDigest pk high forged)
-  assert "unadvanced signature fails for changed digest" (not (I.verifyDigest pk high (I.Signature lowParts)))
+  assert "original digest verifies" (M.verifyDigest pk low (I.Signature lowParts))
+  assert "checksum-free digest forgery succeeds" (M.verifyDigest pk high forged)
+  assert "unadvanced signature fails for changed digest" (not (M.verifyDigest pk high (I.Signature lowParts)))
   forM_ [BS.empty, C8.pack "toy WOTS-"] $ \msg -> do
     (secret, public) <- M.generateKeyPair
     assert "public API with fresh key" (M.verify public msg (M.signOnce secret msg))

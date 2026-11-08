@@ -43,6 +43,9 @@ Keep changes small enough for a human to review and explain material design choi
   fresh cryptographic randomness; size validation does not establish their quality.
 - Hide constructors when necessary to preserve length or parameter invariants.
   Validate untrusted byte inputs and return explicit failures for malformed values.
+- Preserve public `signDigest` and `verifyDigest` in both variants, operating on
+  `Digest` without an extra prehash. Message-level wrappers hash exactly once.
+  Single-use obligations apply across all signing entry points for a key.
 - Do not log secret keys, derive printable representations for them, or claim
   constant-time behavior, memory erasure, or production security without evidence.
 - One-time keys must never be reused. Document the reference API's inability to

@@ -72,6 +72,13 @@ their convenience composition. Entropy bytes are secret-key material, not a shor
 seed; callers must supply fresh cryptographic randomness. Invalid lengths return
 `Nothing`, and deterministic fixtures remain test-only.
 
+Both variants expose `signDigest :: SecretKey -> Digest -> Signature` and
+`verifyDigest :: PublicKey -> Digest -> Signature -> Bool`. These use the supplied
+digest directly. Keep message-level `signOnce` and `verify` as wrappers that hash
+once. `Crypto.HashBased.Hash` provides hashing and validated digest import. Single
+use applies across all signing entry points; tests cover fixture agreement, raw
+digest handling without another prehash, and wrong-digest/key rejection.
+
 WOTS keys may sign only once. Use a conservative initial API: expose an
 explicitly named one-time signing function with this precondition documented at
 the call site and in the README. Haskell values are copyable, so the API does not

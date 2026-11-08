@@ -85,13 +85,23 @@ generateKeyPair = do
 publicKey :: SecretKey -> PublicKey
 publicKey (SecretKey xs) = PublicKey (map (advance (winternitzBase - 1)) xs)
 
--- | Sign at most ONE message with this key. Values do not enforce single use.
-signOnce :: SecretKey -> BS.ByteString -> Signature
-signOnce (SecretKey xs) message =
-  Signature (zipWith advance (signingDigits (hash message)) xs)
+-- | Sign a supplied digest directly, without hashing it again.
+-- Use this secret key at most once across ALL signing entry points.
+signDigest :: SecretKey -> Digest -> Signature
+signDigest (SecretKey xs) digest =
+  Signature (zipWith advance (signingDigits digest) xs)
 
-verify :: PublicKey -> BS.ByteString -> Signature -> Bool
-verify (PublicKey pk) message (Signature sig) =
+-- | Verify a supplied digest directly, without hashing it again.
+verifyDigest :: PublicKey -> Digest -> Signature -> Bool
+verifyDigest (PublicKey pk) digest (Signature sig) =
   length pk == chainCount && length sig == chainCount &&
   zipWith advance remaining sig == pk
-  where remaining = map (winternitzBase - 1 -) (signingDigits (hash message))
+  where remaining = map (winternitzBase - 1 -) (signingDigits digest)
+
+-- | Hash the message once, then sign. Single use is not enforced by the type.
+signOnce :: SecretKey -> BS.ByteString -> Signature
+signOnce sk = signDigest sk . hash
+
+-- | Hash the message once, then verify.
+verify :: PublicKey -> BS.ByteString -> Signature -> Bool
+verify pk message = verifyDigest pk (hash message)

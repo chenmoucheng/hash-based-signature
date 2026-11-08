@@ -54,20 +54,22 @@ generateKeyPair = do
 publicKey :: SecretKey -> PublicKey
 publicKey (SecretKey xs) = PublicKey (map (advance (winternitzBase - 1)) xs)
 
--- Private digest seams demonstrate the attack without claiming to find preimages
--- for chosen SHA-256 digest values.
+-- | Sign a supplied digest directly, without hashing it again. Toy only.
+-- Use this secret key at most once across ALL signing entry points.
 signDigest :: SecretKey -> Digest -> Signature
 signDigest (SecretKey xs) digest = Signature (zipWith advance (base16 digest) xs)
 
+-- | Verify a supplied digest directly, without hashing it again. Toy only.
 verifyDigest :: PublicKey -> Digest -> Signature -> Bool
 verifyDigest (PublicKey pk) digest (Signature sig) =
   length pk == chainCount && length sig == chainCount &&
   zipWith advance remaining sig == pk
   where remaining = map (winternitzBase - 1 -) (base16 digest)
 
--- | Toy only. Single use is still required and is not enforced by the type.
+-- | Hash the message once, then sign. Toy only; single use is not enforced.
 signOnce :: SecretKey -> BS.ByteString -> Signature
 signOnce sk = signDigest sk . hash
 
+-- | Hash the message once, then verify. Toy only.
 verify :: PublicKey -> BS.ByteString -> Signature -> Bool
 verify pk message = verifyDigest pk (hash message)

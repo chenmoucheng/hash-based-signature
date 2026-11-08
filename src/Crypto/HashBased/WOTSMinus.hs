@@ -5,6 +5,7 @@ module Crypto.HashBased.WOTSMinus
   ( SecretKey, PublicKey, Signature
   , generateEntropy, keyPairFromEntropy, entropySize
   , generateKeyPair, publicKey, signOnce, verify
+  , signDigest, verifyDigest
   , winternitzBase, chainCount, signatureSize
   ) where
 

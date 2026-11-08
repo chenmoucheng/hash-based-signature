@@ -34,14 +34,16 @@ The example prints `True` and uses a fresh key exactly once:
 ```haskell
 import qualified Data.ByteString.Char8 as BS
 import Crypto.HashBased.WOTS
+import Crypto.HashBased.Hash (hash)
 
 main :: IO ()
 main = do
   bytes <- generateEntropy
   (secret, public) <- maybe (fail "Invalid entropy length") pure (keyPairFromEntropy bytes)
   let message = BS.pack "hello WOTS"
-      signature = signOnce secret message -- Never use secret again.
-  print (verify public message signature)
+      digest = hash message
+      signature = signDigest secret digest -- Never use secret again.
+  print (verifyDigest public digest signature)
 ```
 
 Both variants expose two key-generation phases:
@@ -67,7 +69,23 @@ the two phases. Secret-key constructors remain private.
 Public keys and signatures are opaque in-memory values; there is no
 wire format or key persistence API.
 
-**A WOTS secret key must sign at most one message.** `signOnce` names the obligation
+Both variants also expose digest-level signing and verification:
+
+```haskell
+signDigest   :: SecretKey -> Digest -> Signature
+verifyDigest :: PublicKey -> Digest -> Signature -> Bool
+```
+
+`Digest` comes from `Crypto.HashBased.Hash`. Compute it with `hash`, or validate
+an externally supplied 32-byte digest with `digestFromBytes` (other lengths return
+`Nothing`). Digest-level functions use the supplied value directly, without
+prehashing it again; hash-chain steps still use SHA-256. Callers are responsible
+for selecting the digest that represents their message. The existing wrappers
+retain their behavior: `signOnce sk message = signDigest sk (hash message)` and
+`verify pk message sig = verifyDigest pk (hash message) sig`.
+
+**A WOTS secret key must sign at most one message or digest in total across all
+signing entry points.** `signOnce` names the obligation
 but does not enforce it: immutable Haskell values can be copied and reused. This
 library does not provide durable key consumption, concurrent signing control,
 rollback protection, secret-memory erasure, or constant-time guarantees.
@@ -80,8 +98,9 @@ Section 2 of Wagner et al.,
 The following choices define this repository's variant completely; it is not
 WOTS+, WOTS-PRF, or an XMSS/LMS-compatible implementation.
 
-- `H(x) = SHA256(x)`, with a 32-byte output. Messages are arbitrary bytes and are
-  prehashed once as `H(message)` before digit conversion.
+- `H(x) = SHA256(x)`, with a 32-byte output. Message-level wrappers accept arbitrary
+  bytes and prehash once as `H(message)` before digit conversion. Digest-level
+  functions instead take the supplied 32-byte digest directly.
 - `w = 16` denotes the radix, not the number of bits per digit. Read each digest
   byte high nibble first, in byte order: `len1 = 256 / 4 = 64` digits.
 - Compute `c = sum(15 - digit)`. Its maximum is 960, so
@@ -119,7 +138,8 @@ be advanced to sign any digest whose digits are all greater than or equal to the
 original digits. Tests demonstrate this with chosen digests `11…11` and `22…22`,
 advancing each signature element once without the secret key. This is a
 digest-level demonstration; it does not claim to find SHA-256 message preimages
-for those chosen digests. The public API still hashes messages before signing.
+for those chosen digests. The message-level wrapper still hashes messages before
+signing; the public digest-level API allows supplying those digests directly.
 One-time key use remains required and unenforced. Use WOTS- only for experiments.
 
 The test suite also checks WOTS- against the first 64 chains of the independently
