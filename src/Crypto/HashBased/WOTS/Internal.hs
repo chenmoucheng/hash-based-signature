@@ -2,6 +2,8 @@
 module Crypto.HashBased.WOTS.Internal where
 
 import Crypto.HashBased.Hash
+import Crypto.HashBased.Internal.SignatureText (encodeSignature, decodeSignature)
+import qualified Data.Text as T
 import Crypto.HashBased.MessageHash
 import qualified Data.ByteString as BS
 import System.Entropy (getEntropy)
@@ -176,3 +178,17 @@ signOnceWith config sk message = hashMessage config message >>= signDigestWith c
 verifyWith :: MessageHash -> PublicKey -> BS.ByteString -> Signature -> Bool
 verifyWith config pk message sig =
   maybe False (\digest -> verifyDigestWith config pk digest sig) (hashMessage config message)
+
+-- | Export the ordered chain values as lowercase hexadecimal, without metadata.
+signatureToText :: Signature -> T.Text
+signatureToText (Signature values) = encodeSignature values
+
+-- | Import a default SHA-256-message signature. Hex is case-insensitive;
+-- whitespace, prefixes, non-ASCII hex, and incorrect lengths are rejected.
+-- Successful parsing does not imply a valid signature: verification is required.
+signatureFromText :: T.Text -> Maybe Signature
+signatureFromText = signatureFromTextWith sha256MessageHash
+
+-- | Import with the expected message-hash configuration (which is not encoded).
+signatureFromTextWith :: MessageHash -> T.Text -> Maybe Signature
+signatureFromTextWith config input = Signature <$> decodeSignature (chainCountWith config) input

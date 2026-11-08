@@ -4,6 +4,7 @@ module Crypto.HashBased.WOTS
   ( SecretKey, PublicKey, Signature
   , generateEntropy, keyPairFromEntropy, entropySize
   , generateKeyPair, publicKey, signOnce, verify
+  , signatureToText, signatureFromText, signatureFromTextWith
   , signDigest, verifyDigest
   , generateEntropyWith, keyPairFromEntropyWith, generateKeyPairWith
   , signDigestWith, verifyDigestWith, signOnceWith, verifyWith

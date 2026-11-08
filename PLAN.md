@@ -161,7 +161,11 @@ changing a central framework interface.
 ## Deferred work
 
 No CLI, service, plugin registry, general signature typeclass, benchmark suite,
-custom FFI, key storage, wire format, or broad scheme catalog in the initial
-framework. Add serialization only with a specific interoperability requirement
-and its malformed-input tests. Secure persistence and rollback protection are
+custom FFI, key storage, or broad scheme catalog in the initial framework.
+The requested signature import/export uses canonical lowercase hexadecimal Text
+for concatenated chain values, with default and configured-size parsers. Import
+accepts either hex case and rejects invalid characters or lengths. Scheme/hash
+metadata and public-key persistence remain out of scope. Tests cover independent
+fixtures, leading zeros, malformed text, and verification after import. Secure
+persistence and rollback protection are
 prerequisites for supporting stateful signing, not implicit features of this MVP.

@@ -52,6 +52,9 @@ Keep changes small enough for a human to review and explain material design choi
   test non-32-byte digests, checksum-width boundaries, and malformed callback output.
 - Do not log secret keys, derive printable representations for them, or claim
   constant-time behavior, memory erasure, or production security without evidence.
+- Keep signature Text export canonical lowercase hex in chain order. Validate
+  characters and exact configured payload length on import; parsing is separate
+  from verification. Do not imply the payload contains scheme/hash metadata.
 - One-time keys must never be reused. Document the reference API's inability to
   enforce key consumption. Do not describe ordinary immutable values as enforcing
   single use.

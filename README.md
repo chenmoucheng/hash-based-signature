@@ -30,11 +30,12 @@ Silicon with GHC 9.6.7. Linux CI runs the build, tests, and example on pushes an
 pull requests.
 
 The example supplies a 20-byte truncated SHA-256 message hash and its size,
-then uses a fresh key exactly once. Both digest-level and message-level
-verification print `True`:
+then uses a fresh key exactly once. It prints the signature as hexadecimal text,
+imports it, and prints `True` for both digest-level and message-level verification:
 
 ```haskell
 import qualified Data.ByteString.Char8 as BS
+import qualified Data.Text.IO as Text
 import Crypto.HashBased.WOTS
 import Crypto.HashBased.Hash (digestBytes, hash)
 import Crypto.HashBased.MessageHash (hashMessage, mkMessageHash)
@@ -57,9 +58,12 @@ main = do
   digest <- maybe (fail "Hash returned the wrong size") pure (hashMessage config message)
   signature <- maybe (fail "Digest/key size mismatch") pure (signDigestWith config secret digest)
   -- Never use secret again, including through any other signing entry point.
-  print (verifyDigestWith config public digest signature)
+  let exported = signatureToText signature
+  Text.putStrLn exported
+  imported <- maybe (fail "Invalid signature text") pure (signatureFromTextWith config exported)
+  print (verifyDigestWith config public digest imported)
   -- The message-level wrapper uses the same hash configuration.
-  print (verifyWith config public message signature)
+  print (verifyWith config public message imported)
 ```
 
 Both variants expose two key-generation phases:
@@ -83,7 +87,8 @@ two variants. Deterministic public fixtures belong only in tests.
 `generateKeyPair :: IO (SecretKey, PublicKey)` remains as a convenience composing
 the two phases. Secret-key constructors remain private.
 Public keys and signatures are opaque in-memory values; there is no
-wire format or key persistence API.
+key persistence or public-key import/export API. Signatures have the text payload
+format described below.
 
 Both variants also expose digest-level signing and verification:
 
@@ -105,6 +110,29 @@ signing entry points.** `signOnce` names the obligation
 but does not enforce it: immutable Haskell values can be copied and reused. This
 library does not provide durable key consumption, concurrent signing control,
 rollback protection, secret-memory erasure, or constant-time guarantees.
+
+## Signature text import/export
+
+Both variants expose a simple `Data.Text.Text` interface:
+
+```haskell
+signatureToText       :: Signature -> Text
+signatureFromText     :: Text -> Maybe Signature
+signatureFromTextWith :: MessageHash -> Text -> Maybe Signature
+```
+
+The format is the ordered concatenation of the 32-byte signature chain values,
+encoded as lowercase hexadecimal: exactly `2 * signatureSizeWith config` ASCII
+characters, with no prefix, separators, or whitespace. Import accepts uppercase
+hex too, but rejects invalid characters, odd lengths, and any unexpected length.
+Export preserves leading zero bytes. `signatureFromText` selects the default
+SHA-256 message configuration; use `signatureFromTextWith` for a custom one.
+
+The payload contains no scheme identifier, hash identity, message, or public key.
+Exchange the scheme and message-hash configuration separately. Parsing checks
+structure only: always verify an imported signature against the intended message
+or digest and public key. The example prints the exported text, imports it using
+its custom configuration, then prints `True` for both verification interfaces.
 
 ## Custom message hashes
 
@@ -193,7 +221,8 @@ WOTS+, WOTS-PRF, or an XMSS/LMS-compatible implementation.
   signature contains `H^digit[i](secret[i])`, where `H^0` is the identity.
   Verify by advancing each signature element `15 - digit[i]` steps and comparing
   all endpoints. Signature and public-key payloads are each 2144 bytes; this does
-  not include Haskell runtime overhead or define a serialization format.
+  not include Haskell runtime overhead. Hexadecimal signature text is twice the
+  payload byte size.
 
 This choice deliberately retains the basic plain-hash construction. Security
 claims for PRF-based WOTS or WOTS+ are not claims about this implementation.
@@ -232,7 +261,7 @@ nonempty messages. Existing CI runs these tests with the rest of the suite.
 | [cryptohash-sha256](https://hackage.haskell.org/package/cryptohash-sha256-0.11.102.1) | 0.11.102.1 | Existing wrapper over bundled C SHA-256; needs a C compiler, no OpenSSL installation | BSD-3-Clause |
 | [entropy](https://hackage.haskell.org/package/entropy-0.4.1.11) | 0.4.1.11 | Platform cryptographic entropy; C feature probes and OS entropy APIs | BSD-3-Clause |
 
-`base` and `bytestring` come from the pinned compiler/snapshot. There are no custom
+`base`, `bytestring`, and `text` come from the pinned compiler/snapshot. There are no custom
 FFI bindings. `entropy` may print failed feature probes for unavailable APIs while
 configuring; it selects a supported platform source (including `/dev/urandom`
 fallback on Unix). Failure to obtain entropy is not replaced by predictable data.

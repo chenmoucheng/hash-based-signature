@@ -1,6 +1,7 @@
 module Main (main) where
 
 import qualified Data.ByteString.Char8 as BS
+import qualified Data.Text.IO as Text
 import Crypto.HashBased.WOTS
 import Crypto.HashBased.Hash (digestBytes, hash)
 import Crypto.HashBased.MessageHash (hashMessage, mkMessageHash)
@@ -23,6 +24,9 @@ main = do
   digest <- maybe (fail "Hash returned the wrong size") pure (hashMessage config message)
   signature <- maybe (fail "Digest/key size mismatch") pure (signDigestWith config secret digest)
   -- Never use secret again, including through any other signing entry point.
-  print (verifyDigestWith config public digest signature)
+  let exported = signatureToText signature
+  Text.putStrLn exported
+  imported <- maybe (fail "Invalid signature text") pure (signatureFromTextWith config exported)
+  print (verifyDigestWith config public digest imported)
   -- The message-level wrapper uses the same hash configuration.
-  print (verifyWith config public message signature)
+  print (verifyWith config public message imported)

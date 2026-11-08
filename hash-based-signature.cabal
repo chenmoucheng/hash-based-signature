@@ -13,12 +13,13 @@ common defaults
     , bytestring >=0.11 && <0.12
     , cryptohash-sha256 ==0.11.102.1
     , entropy ==0.4.1.11
+    , text >=2.0 && <2.1
 
 library
   import: defaults
   hs-source-dirs: src
   exposed-modules: Crypto.HashBased.Hash, Crypto.HashBased.MessageHash, Crypto.HashBased.WOTS, Crypto.HashBased.WOTSMinus
-  other-modules: Crypto.HashBased.WOTS.Internal, Crypto.HashBased.WOTSMinus.Internal
+  other-modules: Crypto.HashBased.WOTS.Internal, Crypto.HashBased.WOTSMinus.Internal, Crypto.HashBased.Internal.SignatureText
 
 test-suite tests
   import: defaults
@@ -28,6 +29,8 @@ test-suite tests
   other-modules:
       WOTSMinusTests
       MessageHashTests
+      SignatureTextTests
+      Crypto.HashBased.Internal.SignatureText
       Crypto.HashBased.Hash
       Crypto.HashBased.MessageHash
       Crypto.HashBased.WOTS
@@ -40,4 +43,4 @@ executable wots-example
   ghc-options: -Wall
   hs-source-dirs: examples
   main-is: Main.hs
-  build-depends: base >=4.18 && <4.19, bytestring >=0.11 && <0.12, hash-based-signature
+  build-depends: base >=4.18 && <4.19, bytestring >=0.11 && <0.12, text >=2.0 && <2.1, hash-based-signature
