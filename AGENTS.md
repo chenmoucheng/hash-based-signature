@@ -32,8 +32,8 @@ Keep changes small enough for a human to review and explain material design choi
   explicit scope decision. Test base conversion, checksum encoding, and chain
   bounds independently, and derive sizes from the selected parameters.
 - Keep the requested checksum-free WOTS- toy in `Crypto.HashBased.WOTSMinus`
-  with distinct types. Preserve its educational insecure status, SHA-256 message
-  preprocessing, and tests demonstrating digest-level forgery without checksums.
+  with distinct types. Preserve its educational insecure status, SHA-256 default
+  message preprocessing, and tests demonstrating digest-level forgery without checksums.
   Do not present chosen-digest attacks as message-preimage attacks.
 - Use established cryptographic randomness for key generation. Keep deterministic
   fixtures in tests; never add a production fallback to predictable randomness.
@@ -46,6 +46,10 @@ Keep changes small enough for a human to review and explain material design choi
 - Preserve public `signDigest` and `verifyDigest` in both variants, operating on
   `Digest` without an extra prehash. Message-level wrappers hash exactly once.
   Single-use obligations apply across all signing entry points for a key.
+- Support caller-selected message hashes and digest sizes with `MessageHash` and
+  the `…With` interfaces. Validate output lengths and derive chain/checksum/entropy
+  sizes; keep native SHA-256 chain hashing separate. Preserve the default API and
+  test non-32-byte digests, checksum-width boundaries, and malformed callback output.
 - Do not log secret keys, derive printable representations for them, or claim
   constant-time behavior, memory erasure, or production security without evidence.
 - One-time keys must never be reused. Document the reference API's inability to

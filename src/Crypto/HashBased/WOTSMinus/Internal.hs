@@ -2,7 +2,8 @@
 module Crypto.HashBased.WOTSMinus.Internal where
 
 import Crypto.HashBased.Hash
-import Crypto.HashBased.WOTS.Internal (advance, base16, winternitzBase, messageDigits)
+import Crypto.HashBased.MessageHash
+import Crypto.HashBased.WOTS.Internal (advance, base16, base16Bytes, winternitzBase, messageDigits)
 import qualified Data.ByteString as BS
 import System.Entropy (getEntropy)
 
@@ -73,3 +74,67 @@ signOnce sk = signDigest sk . hash
 -- | Hash the message once, then verify. Toy only.
 verify :: PublicKey -> BS.ByteString -> Signature -> Bool
 verify pk message = verifyDigest pk (hash message)
+
+-- | Number of chains for the selected message hash. Chain nodes remain SHA-256.
+chainCountWith :: MessageHash -> Int
+chainCountWith config = 2 * messageDigestSize config
+
+signatureSizeWith, entropySizeWith :: MessageHash -> Int
+signatureSizeWith config = chainCountWith config * digestSize
+entropySizeWith = signatureSizeWith
+
+-- | Fresh secret bytes for the selected message-digest size.
+generateEntropyWith :: MessageHash -> IO BS.ByteString
+generateEntropyWith = getEntropy . entropySizeWith
+
+-- | Pure key generation; reject entropy whose length does not match the config.
+keyPairFromEntropyWith :: MessageHash -> BS.ByteString -> Maybe (SecretKey, PublicKey)
+keyPairFromEntropyWith config bytes
+  | BS.length bytes /= entropySizeWith config = Nothing
+  | otherwise = do
+      values <- chunks bytes
+      let sk = SecretKey values
+      pure (sk, publicKey sk)
+  where
+    chunks bs
+      | BS.null bs = Just []
+      | otherwise = (:) <$> digestFromBytes (BS.take digestSize bs)
+                         <*> chunks (BS.drop digestSize bs)
+
+generateKeyPairWith :: MessageHash -> IO (SecretKey, PublicKey)
+generateKeyPairWith config = do
+  bytes <- generateEntropyWith config
+  maybe (ioError (userError "Invalid entropy source length")) pure
+    (keyPairFromEntropyWith config bytes)
+
+-- Configurable digests are raw bytes, not the fixed SHA-256 chain Digest type.
+-- No prehash is performed here. Always check the length before using zipWith.
+signingDigitsWith :: MessageHash -> BS.ByteString -> Maybe [Int]
+signingDigitsWith config digest = do
+  if BS.length digest == messageDigestSize config then Just () else Nothing
+  pure (base16Bytes digest)
+
+-- | Sign a raw digest directly. Nothing means a digest/key size mismatch.
+-- Use the secret key at most once across all entry points and configurations.
+signDigestWith :: MessageHash -> SecretKey -> BS.ByteString -> Maybe Signature
+signDigestWith config (SecretKey xs) digest = do
+  ds <- signingDigitsWith config digest
+  if length xs /= chainCountWith config then Nothing
+    else Just (Signature (zipWith advance ds xs))
+
+-- | Verify a raw digest, rejecting mismatched digest/key/signature sizes.
+verifyDigestWith :: MessageHash -> PublicKey -> BS.ByteString -> Signature -> Bool
+verifyDigestWith config (PublicKey pk) digest (Signature sig) =
+  case signingDigitsWith config digest of
+    Nothing -> False
+    Just ds -> length pk == chainCountWith config && length sig == chainCountWith config &&
+      zipWith advance (map (15 -) ds) sig == pk
+
+-- | Hash once with the selected callback, validate its length, then sign.
+signOnceWith :: MessageHash -> SecretKey -> BS.ByteString -> Maybe Signature
+signOnceWith config sk message = hashMessage config message >>= signDigestWith config sk
+
+-- | Hash once with the selected callback, validate its length, then verify.
+verifyWith :: MessageHash -> PublicKey -> BS.ByteString -> Signature -> Bool
+verifyWith config pk message sig =
+  maybe False (\digest -> verifyDigestWith config pk digest sig) (hashMessage config message)

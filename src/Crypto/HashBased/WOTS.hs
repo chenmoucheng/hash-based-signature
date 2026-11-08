@@ -5,6 +5,9 @@ module Crypto.HashBased.WOTS
   , generateEntropy, keyPairFromEntropy, entropySize
   , generateKeyPair, publicKey, signOnce, verify
   , signDigest, verifyDigest
+  , generateEntropyWith, keyPairFromEntropyWith, generateKeyPairWith
+  , signDigestWith, verifyDigestWith, signOnceWith, verifyWith
+  , chainCountWith, signatureSizeWith, entropySizeWith
   , winternitzBase, chainCount, signatureSize
   ) where
 

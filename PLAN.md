@@ -43,9 +43,15 @@ out of scheme modules. Verify that the dependency actually uses a native
 implementation, and document its native libraries, compiler requirements, license,
 and installation steps. Do not write a new FFI binding or a pure Haskell hash.
 
-Do not make hash algorithms dynamically pluggable yet. Add another algorithm or
-parameterization only when a concrete scheme requires it. Preserve each scheme's
-specified hashing, domain separation, and input encodings exactly.
+Message hashing is now caller-configurable through `Crypto.HashBased.MessageHash`:
+an opaque configuration pairs a positive digest size in bytes with a pure
+`ByteString -> ByteString` callback. Both schemes expose `…With` operations for
+key generation, derived sizes, message signing, and raw-digest signing. Validate
+callback output and digest lengths, derive message/checksum chain counts from
+the configured size, and reject overflowing sizes. Keep the existing API as the
+SHA-256/32-byte default. Chain hashing remains native SHA-256 with 32-byte nodes.
+Preserve each scheme's domain separation and input encodings exactly. Callers
+must use the same configuration consistently; keys do not encode hash identities.
 
 ### Scheme modules
 

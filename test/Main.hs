@@ -10,6 +10,7 @@ import Data.Bits (xor)
 import Data.List (foldl')
 import Numeric (showHex)
 import qualified WOTSMinusTests
+import qualified MessageHashTests
 
 assert :: String -> Bool -> IO ()
 assert label ok = unless ok (ioError (userError label))
@@ -109,4 +110,5 @@ main = do
     (secret, public) <- W.generateKeyPair
     assert "generated key signs and verifies" (W.verify public msg (W.signOnce secret msg))
   WOTSMinusTests.tests
+  MessageHashTests.tests
   putStrLn "All WOTS, WOTS-, and SHA-256 tests passed."

@@ -29,21 +29,37 @@ the same Stack commands. The implementation has been built and tested on Apple
 Silicon with GHC 9.6.7. Linux CI runs the build, tests, and example on pushes and
 pull requests.
 
-The example prints `True` and uses a fresh key exactly once:
+The example supplies a 20-byte truncated SHA-256 message hash and its size,
+then uses a fresh key exactly once. Both digest-level and message-level
+verification print `True`:
 
 ```haskell
 import qualified Data.ByteString.Char8 as BS
 import Crypto.HashBased.WOTS
-import Crypto.HashBased.Hash (hash)
+import Crypto.HashBased.Hash (digestBytes, hash)
+import Crypto.HashBased.MessageHash (hashMessage, mkMessageHash)
+
+-- An example caller-supplied hash: SHA-256 truncated to 20 bytes.
+-- Replace this function and its declared size together to use another hash.
+userHash :: BS.ByteString -> BS.ByteString
+userHash = BS.take userDigestSize . digestBytes . hash
+
+userDigestSize :: Int
+userDigestSize = 20 -- bytes, not bits
 
 main :: IO ()
 main = do
-  bytes <- generateEntropy
-  (secret, public) <- maybe (fail "Invalid entropy length") pure (keyPairFromEntropy bytes)
+  config <- maybe (fail "Invalid digest size") pure (mkMessageHash userDigestSize userHash)
+  -- The configured digest size determines entropy, key, and signature sizes.
+  bytes <- generateEntropyWith config
+  (secret, public) <- maybe (fail "Invalid entropy length") pure (keyPairFromEntropyWith config bytes)
   let message = BS.pack "hello WOTS"
-      digest = hash message
-      signature = signDigest secret digest -- Never use secret again.
-  print (verifyDigest public digest signature)
+  digest <- maybe (fail "Hash returned the wrong size") pure (hashMessage config message)
+  signature <- maybe (fail "Digest/key size mismatch") pure (signDigestWith config secret digest)
+  -- Never use secret again, including through any other signing entry point.
+  print (verifyDigestWith config public digest signature)
+  -- The message-level wrapper uses the same hash configuration.
+  print (verifyWith config public message signature)
 ```
 
 Both variants expose two key-generation phases:
@@ -90,7 +106,69 @@ but does not enforce it: immutable Haskell values can be copied and reused. This
 library does not provide durable key consumption, concurrent signing control,
 rollback protection, secret-memory erasure, or constant-time guarantees.
 
-## Exact construction
+## Custom message hashes
+
+`Crypto.HashBased.MessageHash` accepts a caller's strict-byte-string hash function
+and its output size **in bytes**:
+
+```haskell
+mkMessageHash      :: Int -> (ByteString -> ByteString) -> Maybe MessageHash
+messageDigestSize  :: MessageHash -> Int
+hashMessage        :: MessageHash -> ByteString -> Maybe ByteString
+sha256MessageHash  :: MessageHash
+```
+
+Both schemes expose these configurable operations (with their own key/signature
+types):
+
+```haskell
+generateEntropyWith    :: MessageHash -> IO ByteString
+keyPairFromEntropyWith :: MessageHash -> ByteString -> Maybe (SecretKey, PublicKey)
+generateKeyPairWith    :: MessageHash -> IO (SecretKey, PublicKey)
+signOnceWith           :: MessageHash -> SecretKey -> ByteString -> Maybe Signature
+verifyWith             :: MessageHash -> PublicKey -> ByteString -> Signature -> Bool
+signDigestWith         :: MessageHash -> SecretKey -> ByteString -> Maybe Signature
+verifyDigestWith       :: MessageHash -> PublicKey -> ByteString -> Signature -> Bool
+chainCountWith         :: MessageHash -> Int
+signatureSizeWith      :: MessageHash -> Int
+entropySizeWith        :: MessageHash -> Int
+```
+
+For example, given `userHash :: ByteString -> ByteString` and its size:
+
+```haskell
+config <- maybe (fail "Invalid digest size") pure (mkMessageHash sizeBytes userHash)
+entropy <- generateEntropyWith config
+(secret, public) <- maybe (fail "Invalid entropy") pure (keyPairFromEntropyWith config entropy)
+digest <- maybe (fail "Hash returned the wrong size") pure (hashMessage config message)
+signature <- maybe (fail "Digest/key size mismatch") pure (signDigestWith config secret digest)
+print (verifyDigestWith config public digest signature)
+```
+
+`signOnceWith` and `verifyWith` call the selected message hash once and check its
+output length. `signDigestWith` and `verifyDigestWith` accept raw digest bytes,
+check their length, and never invoke the callback. Signing returns `Nothing` for
+size mismatches; verification returns `False`. Configuration rejects nonpositive
+sizes and derived payload sizes that would overflow `Int`. Callback exceptions
+and nontermination are not caught. Cryptographic strength is the caller's
+responsibility; a valid length alone does not establish it.
+
+For an `n`-byte message digest, radix 16 needs `2*n` message chains. WOTS appends
+`floor(log_16(30*n)) + 1` checksum chains; WOTS- appends none. **Chain hashing stays
+SHA-256 with 32-byte chain values**, so entropy and signature sizes are always
+`32 * chainCountWith config`. For example, a 64-byte message digest requires 131
+WOTS chains or 128 WOTS- chains. Use the same configuration for key generation,
+signing, and verification. Algorithm identities are not serialized or embedded
+in keys: different callbacks with the same output size are not distinguished.
+Single use applies across configurations as well as signing entry points.
+
+The unsuffixed API remains the SHA-256/32-byte default described above. Its
+`Digest` type remains a fixed SHA-256-sized value; use raw bytes through the
+`…With` digest functions for other sizes. Tests include 1, 8, 9, 16, 32, and 64-byte
+outputs, checksum-width boundaries, invalid callback output, and an independent
+one-byte-digest fixture. Short/truncated test hashes are test-only examples.
+
+## Exact default construction
 
 We instantiate the basic hash-chain/checksum WOTS construction described in
 Section 2 of Wagner et al.,
