@@ -2,7 +2,7 @@
 module Crypto.HashBased.WOTSMinus.Internal where
 
 import Crypto.HashBased.Hash
-import Crypto.HashBased.Internal.SignatureText (encodeSignature, decodeSignature)
+import Crypto.HashBased.Internal.DigestText (encodeDigests, decodeDigests)
 import qualified Data.Text as T
 import Crypto.HashBased.MessageHash
 import Crypto.HashBased.WOTS.Internal (advance, base16, base16Bytes, winternitzBase, messageDigits)
@@ -143,7 +143,7 @@ verifyWith config pk message sig =
 
 -- | Export the ordered chain values as lowercase hexadecimal, without metadata.
 signatureToText :: Signature -> T.Text
-signatureToText (Signature values) = encodeSignature values
+signatureToText (Signature values) = encodeDigests values
 
 -- | Import a default SHA-256-message signature. Hex is case-insensitive;
 -- whitespace, prefixes, non-ASCII hex, and incorrect lengths are rejected.
@@ -153,4 +153,18 @@ signatureFromText = signatureFromTextWith sha256MessageHash
 
 -- | Import with the expected message-hash configuration (which is not encoded).
 signatureFromTextWith :: MessageHash -> T.Text -> Maybe Signature
-signatureFromTextWith config input = Signature <$> decodeSignature (chainCountWith config) input
+signatureFromTextWith config input = Signature <$> decodeDigests (chainCountWith config) input
+
+-- | Export ordered public chain endpoints as lowercase hexadecimal.
+publicKeyToText :: PublicKey -> T.Text
+publicKeyToText (PublicKey values) = encodeDigests values
+
+-- | Import a public key with the default message-hash configuration.
+-- Parsing validates structure, not the identity or trustworthiness of the key.
+publicKeyFromText :: T.Text -> Maybe PublicKey
+publicKeyFromText = publicKeyFromTextWith sha256MessageHash
+
+-- | Import with the expected configuration; metadata is not included in the text.
+-- Accept either hex case, but no whitespace, prefix, or incorrect payload length.
+publicKeyFromTextWith :: MessageHash -> T.Text -> Maybe PublicKey
+publicKeyFromTextWith config input = PublicKey <$> decodeDigests (chainCountWith config) input

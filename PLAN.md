@@ -165,7 +165,11 @@ custom FFI, key storage, or broad scheme catalog in the initial framework.
 The requested signature import/export uses canonical lowercase hexadecimal Text
 for concatenated chain values, with default and configured-size parsers. Import
 accepts either hex case and rejects invalid characters or lengths. Scheme/hash
-metadata and public-key persistence remain out of scope. Tests cover independent
-fixtures, leading zeros, malformed text, and verification after import. Secure
+metadata and secret-key persistence remain out of scope. Public keys expose
+`publicKeyToText`, `publicKeyFromText`, and `publicKeyFromTextWith` for ordered
+chain endpoints, sharing the private hex codec. Payloads have no type tags;
+parsing cannot authenticate keys or distinguish key text from signature text.
+Tests cover independent fixtures, leading zeros, malformed text, and verification
+after importing both signatures and public keys. Secure
 persistence and rollback protection are
 prerequisites for supporting stateful signing, not implicit features of this MVP.

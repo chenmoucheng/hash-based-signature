@@ -55,6 +55,9 @@ Keep changes small enough for a human to review and explain material design choi
 - Keep signature Text export canonical lowercase hex in chain order. Validate
   characters and exact configured payload length on import; parsing is separate
   from verification. Do not imply the payload contains scheme/hash metadata.
+- Apply the same Text format and configured-length validation to public keys in
+  endpoint order. Parsing does not authenticate keys; key/signature payloads have
+  no type tags. Keep secret-key text export out of the public interface.
 - One-time keys must never be reused. Document the reference API's inability to
   enforce key consumption. Do not describe ordinary immutable values as enforcing
   single use.

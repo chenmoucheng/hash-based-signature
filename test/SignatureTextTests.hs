@@ -41,13 +41,21 @@ tests = do
       minusSignature = M.signOnce msk message
   check W.signatureSize signature W.signatureToText W.signatureFromText
   check M.signatureSize minusSignature M.signatureToText M.signatureFromText
+  check W.signatureSize pk W.publicKeyToText W.publicKeyFromText
+  check M.signatureSize mpk M.publicKeyToText M.publicKeyFromText
   fixture <- lines <$> readFile "test/fixtures/wots.txt"
+  assert "public key export matches independent fixture" (take 1 fixture == [T.unpack (W.publicKeyToText pk)])
+  assert "minus public key export matches independent fixture" (map (take (M.signatureSize*2)) (take 1 fixture) ==
+    [T.unpack (M.publicKeyToText mpk)])
   assert "export matches independent fixture" (drop 1 fixture == [T.unpack (W.signatureToText signature)])
   assert "minus export matches independent fixture" (map (take (M.signatureSize*2)) (drop 1 fixture) ==
     [T.unpack (M.signatureToText minusSignature)])
   imported <- require (W.signatureFromText (W.signatureToText signature))
   minusImported <- require (M.signatureFromText (M.signatureToText minusSignature))
-  assert "imported signatures verify" (W.verify pk message imported && M.verify mpk message minusImported)
+  importedPublic <- require (W.publicKeyFromText (W.publicKeyToText pk))
+  minusImportedPublic <- require (M.publicKeyFromText (M.publicKeyToText mpk))
+  assert "imported signatures and public keys verify" (W.verify importedPublic message imported &&
+    M.verify minusImportedPublic message minusImported)
   -- All-zero text is structurally valid, but is not an authenticated signature.
   zeros <- require (W.signatureFromText (T.replicate (W.signatureSize*2) (T.singleton '0')))
   assert "parsing does not replace verification" (not (W.verify pk message zeros))
@@ -60,12 +68,20 @@ tests = do
     msig <- require (M.signOnceWith config minusSecret message)
     check (W.signatureSizeWith config) sig W.signatureToText (W.signatureFromTextWith config)
     check (M.signatureSizeWith config) msig M.signatureToText (M.signatureFromTextWith config)
+    check (W.signatureSizeWith config) public W.publicKeyToText (W.publicKeyFromTextWith config)
+    check (M.signatureSizeWith config) minusPublic M.publicKeyToText (M.publicKeyFromTextWith config)
     parsed <- require (W.signatureFromTextWith config (W.signatureToText sig))
     mparsed <- require (M.signatureFromTextWith config (M.signatureToText msig))
-    assert "configured imported signatures verify" (W.verifyWith config public message parsed &&
-      M.verifyWith config minusPublic message mparsed)
+    parsedPublic <- require (W.publicKeyFromTextWith config (W.publicKeyToText public))
+    mparsedPublic <- require (M.publicKeyFromTextWith config (M.publicKeyToText minusPublic))
+    assert "configured imported signatures and keys verify" (W.verifyWith config parsedPublic message parsed &&
+      M.verifyWith config mparsedPublic message mparsed)
+    assert "wrong scheme public key length rejected" (W.publicKeyFromTextWith config (M.publicKeyToText minusPublic) == Nothing &&
+      M.publicKeyFromTextWith config (W.publicKeyToText public) == Nothing)
     assert "wrong scheme length rejected" (W.signatureFromTextWith config (M.signatureToText msig) == Nothing &&
       M.signatureFromTextWith config (W.signatureToText sig) == Nothing)
     if size /= 32 then assert "default config rejects custom length" (
       W.signatureFromText (W.signatureToText sig) == Nothing &&
-      M.signatureFromText (M.signatureToText msig) == Nothing) else pure ()
+      M.signatureFromText (M.signatureToText msig) == Nothing &&
+      W.publicKeyFromText (W.publicKeyToText public) == Nothing &&
+      M.publicKeyFromText (M.publicKeyToText minusPublic) == Nothing) else pure ()

@@ -30,8 +30,8 @@ Silicon with GHC 9.6.7. Linux CI runs the build, tests, and example on pushes an
 pull requests.
 
 The example supplies a 20-byte truncated SHA-256 message hash and its size,
-then uses a fresh key exactly once. It prints the signature as hexadecimal text,
-imports it, and prints `True` for both digest-level and message-level verification:
+then uses a fresh key exactly once. It prints the public key and signature as
+hexadecimal text, imports both, and prints `True` for both verification interfaces:
 
 ```haskell
 import qualified Data.ByteString.Char8 as BS
@@ -54,6 +54,9 @@ main = do
   -- The configured digest size determines entropy, key, and signature sizes.
   bytes <- generateEntropyWith config
   (secret, public) <- maybe (fail "Invalid entropy length") pure (keyPairFromEntropyWith config bytes)
+  let exportedPublic = publicKeyToText public
+  Text.putStrLn exportedPublic
+  importedPublic <- maybe (fail "Invalid public key text") pure (publicKeyFromTextWith config exportedPublic)
   let message = BS.pack "hello WOTS"
   digest <- maybe (fail "Hash returned the wrong size") pure (hashMessage config message)
   signature <- maybe (fail "Digest/key size mismatch") pure (signDigestWith config secret digest)
@@ -61,9 +64,9 @@ main = do
   let exported = signatureToText signature
   Text.putStrLn exported
   imported <- maybe (fail "Invalid signature text") pure (signatureFromTextWith config exported)
-  print (verifyDigestWith config public digest imported)
+  print (verifyDigestWith config importedPublic digest imported)
   -- The message-level wrapper uses the same hash configuration.
-  print (verifyWith config public message imported)
+  print (verifyWith config importedPublic message imported)
 ```
 
 Both variants expose two key-generation phases:
@@ -86,9 +89,8 @@ two variants. Deterministic public fixtures belong only in tests.
 
 `generateKeyPair :: IO (SecretKey, PublicKey)` remains as a convenience composing
 the two phases. Secret-key constructors remain private.
-Public keys and signatures are opaque in-memory values; there is no
-key persistence or public-key import/export API. Signatures have the text payload
-format described below.
+Public keys and signatures are opaque values with the text import/export
+interfaces described below. Secret-key persistence remains out of scope.
 
 Both variants also expose digest-level signing and verification:
 
@@ -111,7 +113,7 @@ but does not enforce it: immutable Haskell values can be copied and reused. This
 library does not provide durable key consumption, concurrent signing control,
 rollback protection, secret-memory erasure, or constant-time guarantees.
 
-## Signature text import/export
+## Signature and public-key text import/export
 
 Both variants expose a simple `Data.Text.Text` interface:
 
@@ -119,6 +121,9 @@ Both variants expose a simple `Data.Text.Text` interface:
 signatureToText       :: Signature -> Text
 signatureFromText     :: Text -> Maybe Signature
 signatureFromTextWith :: MessageHash -> Text -> Maybe Signature
+publicKeyToText       :: PublicKey -> Text
+publicKeyFromText     :: Text -> Maybe PublicKey
+publicKeyFromTextWith :: MessageHash -> Text -> Maybe PublicKey
 ```
 
 The format is the ordered concatenation of the 32-byte signature chain values,
@@ -128,11 +133,20 @@ hex too, but rejects invalid characters, odd lengths, and any unexpected length.
 Export preserves leading zero bytes. `signatureFromText` selects the default
 SHA-256 message configuration; use `signatureFromTextWith` for a custom one.
 
-The payload contains no scheme identifier, hash identity, message, or public key.
+Public keys use the same encoding for their ordered 32-byte chain endpoints,
+with the same exact length as signatures for a given scheme and configuration.
+`publicKeyFromText` selects the default configuration; use `publicKeyFromTextWith`
+for custom message hashes. Import accepts either hex case and rejects malformed
+characters or lengths. Parsing does not authenticate a key's identity. The text
+has no type tag, so callers must keep key text and signature text separate.
+
+Neither payload contains a scheme identifier, hash identity, or message.
+Signature text does not include the public key.
 Exchange the scheme and message-hash configuration separately. Parsing checks
 structure only: always verify an imported signature against the intended message
-or digest and public key. The example prints the exported text, imports it using
-its custom configuration, then prints `True` for both verification interfaces.
+or digest and the intended public key. The example prints the public key and then
+the signature, imports both using its custom configuration, then prints `True`
+for both verification interfaces.
 
 ## Custom message hashes
 

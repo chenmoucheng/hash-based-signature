@@ -20,6 +20,9 @@ main = do
   -- The configured digest size determines entropy, key, and signature sizes.
   bytes <- generateEntropyWith config
   (secret, public) <- maybe (fail "Invalid entropy length") pure (keyPairFromEntropyWith config bytes)
+  let exportedPublic = publicKeyToText public
+  Text.putStrLn exportedPublic
+  importedPublic <- maybe (fail "Invalid public key text") pure (publicKeyFromTextWith config exportedPublic)
   let message = BS.pack "hello WOTS"
   digest <- maybe (fail "Hash returned the wrong size") pure (hashMessage config message)
   signature <- maybe (fail "Digest/key size mismatch") pure (signDigestWith config secret digest)
@@ -27,6 +30,6 @@ main = do
   let exported = signatureToText signature
   Text.putStrLn exported
   imported <- maybe (fail "Invalid signature text") pure (signatureFromTextWith config exported)
-  print (verifyDigestWith config public digest imported)
+  print (verifyDigestWith config importedPublic digest imported)
   -- The message-level wrapper uses the same hash configuration.
-  print (verifyWith config public message imported)
+  print (verifyWith config importedPublic message imported)

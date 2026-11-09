@@ -19,7 +19,7 @@ library
   import: defaults
   hs-source-dirs: src
   exposed-modules: Crypto.HashBased.Hash, Crypto.HashBased.MessageHash, Crypto.HashBased.WOTS, Crypto.HashBased.WOTSMinus
-  other-modules: Crypto.HashBased.WOTS.Internal, Crypto.HashBased.WOTSMinus.Internal, Crypto.HashBased.Internal.SignatureText
+  other-modules: Crypto.HashBased.WOTS.Internal, Crypto.HashBased.WOTSMinus.Internal, Crypto.HashBased.Internal.DigestText
 
 test-suite tests
   import: defaults
@@ -30,7 +30,7 @@ test-suite tests
       WOTSMinusTests
       MessageHashTests
       SignatureTextTests
-      Crypto.HashBased.Internal.SignatureText
+      Crypto.HashBased.Internal.DigestText
       Crypto.HashBased.Hash
       Crypto.HashBased.MessageHash
       Crypto.HashBased.WOTS
